@@ -3,6 +3,7 @@ from tkinter import ttk, messagebox, filedialog
 import threading
 import time
 from datetime import datetime, timedelta
+import requests
 from ttkbootstrap import Style
 from plyer import notification
 
@@ -13,9 +14,9 @@ class DownloadManager(tk.Tk):
     def __init__(self):
         super().__init__()
 
-        self.style = Style(theme="cosmo")
+        self.style = Style(theme="superhero")  # Choose a more modern, cloudy theme
         self.title("Download Manager")
-        self.geometry("600x400")
+        self.geometry("800x600")
 
         self.create_widgets()
         self.download_queue = []
@@ -27,61 +28,58 @@ class DownloadManager(tk.Tk):
         self.bytes_downloaded = 0
         self.retry_count = 3
 
+        self.ai_assistant = AIAssistant()
+
         self.protocol("WM_DELETE_WINDOW", self.on_closing)
 
-        self.grid_columnconfigure(0, weight=1)
-        self.grid_columnconfigure(1, weight=1)
-        self.grid_rowconfigure(3, weight=1)
-        self.grid_rowconfigure(9, weight=1)
-
     def create_widgets(self):
-        self.url_label = ttk.Label(self, text="Enter URLs:")
-        self.url_label.grid(row=0, column=0, padx=5, pady=5, sticky=tk.W)
+        self.url_label = ttk.Label(self, text="Enter URLs (comma-separated):")
+        self.url_label.grid(row=0, column=0, padx=10, pady=10, sticky=tk.W)
 
-        self.url_entry = ttk.Entry(self, width=40)
-        self.url_entry.grid(row=0, column=1, columnspan=4, padx=5, pady=5, sticky=tk.W+tk.E)
+        self.url_entry = ttk.Entry(self, width=50)
+        self.url_entry.grid(row=0, column=1, columnspan=4, padx=10, pady=10, sticky=tk.W+tk.E)
 
         self.add_to_queue_button = ttk.Button(self, text="Add to Queue", command=self.add_to_queue)
-        self.add_to_queue_button.grid(row=0, column=5, padx=5, pady=5)
+        self.add_to_queue_button.grid(row=0, column=5, padx=10, pady=10)
 
         self.start_download_button = ttk.Button(self, text="Start", command=self.start_download)
-        self.start_download_button.grid(row=1, column=1, padx=5, pady=5)
+        self.start_download_button.grid(row=1, column=1, padx=10, pady=10)
 
         self.pause_download_button = ttk.Button(self, text="Pause", command=self.pause_download)
-        self.pause_download_button.grid(row=1, column=2, padx=5, pady=5)
+        self.pause_download_button.grid(row=1, column=2, padx=10, pady=10)
 
         self.resume_download_button = ttk.Button(self, text="Resume", command=self.resume_download)
-        self.resume_download_button.grid(row=1, column=3, padx=5, pady=5)
+        self.resume_download_button.grid(row=1, column=3, padx=10, pady=10)
 
         self.stop_download_button = ttk.Button(self, text="Stop", command=self.stop_download)
-        self.stop_download_button.grid(row=1, column=4, padx=5, pady=5)
+        self.stop_download_button.grid(row=1, column=4, padx=10, pady=10)
 
         self.clear_queue_button = ttk.Button(self, text="Clear Queue", command=self.clear_queue)
-        self.clear_queue_button.grid(row=1, column=5, padx=5, pady=5)
+        self.clear_queue_button.grid(row=1, column=5, padx=10, pady=10)
 
         self.schedule_button = ttk.Button(self, text="Schedule", command=self.schedule_download)
-        self.schedule_button.grid(row=1, column=0, padx=5, pady=5)
+        self.schedule_button.grid(row=1, column=0, padx=10, pady=10)
 
         self.bandwidth_label = ttk.Label(self, text="Max Speed (KB/s):")
-        self.bandwidth_label.grid(row=2, column=0, padx=5, pady=5, sticky=tk.W)
+        self.bandwidth_label.grid(row=2, column=0, padx=10, pady=10, sticky=tk.W)
 
         self.bandwidth_entry = ttk.Entry(self, width=10)
-        self.bandwidth_entry.grid(row=2, column=1, padx=5, pady=5, sticky=tk.W)
+        self.bandwidth_entry.grid(row=2, column=1, padx=10, pady=10, sticky=tk.W)
 
         self.dark_mode_button = ttk.Button(self, text="Toggle Dark Mode", command=self.toggle_dark_mode)
-        self.dark_mode_button.grid(row=2, column=2, columnspan=2, padx=5, pady=5, sticky=tk.W)
+        self.dark_mode_button.grid(row=2, column=2, columnspan=2, padx=10, pady=10, sticky=tk.W)
 
         self.queue_label = ttk.Label(self, text="Download Queue:")
-        self.queue_label.grid(row=3, column=0, columnspan=6, padx=5, pady=5, sticky=tk.W)
+        self.queue_label.grid(row=3, column=0, columnspan=6, padx=10, pady=10, sticky=tk.W)
 
-        self.queue_listbox = tk.Listbox(self, width=80, height=5)
-        self.queue_listbox.grid(row=4, column=0, columnspan=6, padx=5, pady=5, sticky=tk.W+tk.E+tk.N+tk.S)
+        self.queue_listbox = tk.Listbox(self, width=80, height=10)
+        self.queue_listbox.grid(row=4, column=0, columnspan=6, padx=10, pady=10, sticky=tk.W+tk.E+tk.N+tk.S)
 
         self.progress_label = ttk.Label(self, text="Progress:")
-        self.progress_label.grid(row=5, column=0, columnspan=2, padx=5, pady=5, sticky=tk.W)
+        self.progress_label.grid(row=5, column=0, columnspan=2, padx=10, pady=10, sticky=tk.W)
 
-        self.progress_bar = ttk.Progressbar(self, mode='determinate', length=200)
-        self.progress_bar.grid(row=5, column=2, columnspan=4, pady=5, padx=5, sticky=tk.W+tk.E)
+        self.progress_bar = ttk.Progressbar(self, mode='determinate', length=400)
+        self.progress_bar.grid(row=5, column=2, columnspan=4, pady=10, padx=10, sticky=tk.W+tk.E)
 
         self.status_label = ttk.Label(self, text="")
         self.status_label.grid(row=6, column=0, columnspan=6, sticky=tk.W+tk.E)
@@ -90,10 +88,36 @@ class DownloadManager(tk.Tk):
         self.details_label.grid(row=7, column=0, columnspan=6, sticky=tk.W+tk.E)
 
         self.history_label = ttk.Label(self, text="Download History:")
-        self.history_label.grid(row=8, column=0, columnspan=6, padx=5, pady=5, sticky=tk.W)
+        self.history_label.grid(row=8, column=0, columnspan=6, padx=10, pady=10, sticky=tk.W)
 
-        self.history_listbox = tk.Text(self, width=80, height=5, wrap=tk.WORD)
-        self.history_listbox.grid(row=9, column=0, columnspan=6, padx=5, pady=5, sticky=tk.W+tk.E+tk.N+tk.S)
+        self.history_listbox = tk.Text(self, width=80, height=10, wrap=tk.WORD)
+        self.history_listbox.grid(row=9, column=0, columnspan=6, padx=10, pady=10, sticky=tk.W+tk.E+tk.N+tk.S)
+
+        self.chat_label = ttk.Label(self, text="Chat with AI Assistant:")
+        self.chat_label.grid(row=10, column=0, columnspan=6, padx=10, pady=10, sticky=tk.W)
+
+        self.chat_entry = ttk.Entry(self, width=80)
+        self.chat_entry.grid(row=11, column=0, columnspan=5, padx=10, pady=10, sticky=tk.W+tk.E)
+
+        self.chat_button = ttk.Button(self, text="Send", command=self.send_chat)
+        self.chat_button.grid(row=11, column=5, padx=10, pady=10)
+
+        self.chat_history = tk.Text(self, width=80, height=10, wrap=tk.WORD)
+        self.chat_history.grid(row=12, column=0, columnspan=6, padx=10, pady=10, sticky=tk.W+tk.E+tk.N+tk.S)
+
+    def send_chat(self):
+        user_input = self.chat_entry.get()
+        self.chat_entry.delete(0, tk.END)
+        response = self.ai_assistant.chat(user_input)
+        self.chat_history.insert(tk.END, f"You: {user_input}\n")
+        self.chat_history.insert(tk.END, f"Assistant: {response}\n")
+        self.chat_history.see(tk.END)
+
+        for i in range(6):
+            self.grid_columnconfigure(i, weight=1)
+
+        self.grid_rowconfigure(4, weight=1)
+        self.grid_rowconfigure(9, weight=1)
 
     def add_to_queue(self):
         urls = self.url_entry.get()
@@ -315,10 +339,10 @@ class DownloadManager(tk.Tk):
 
     def toggle_dark_mode(self):
         current_theme = self.style.theme_use()
-        if current_theme == "cosmo":
-            self.style.theme_use("darkly")
-        else:
+        if current_theme == "cyborg":
             self.style.theme_use("cosmo")
+        else:
+            self.style.theme_use("cyborg")
 
 if __name__ == "__main__":
     app = DownloadManager()

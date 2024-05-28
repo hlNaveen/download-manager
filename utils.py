@@ -9,5 +9,5 @@ def get_max_speed(bandwidth_entry):
 
 def prompt_save_location(url):
     default_filename = url.split("/")[-1]
-    save_location = filedialog.asksaveasfilename(defaultextension=".part", initialfile=default_filename)
+    save_location = filedialog.asksaveasfilename(defaultextension="", initialfile=default_filename)
     return save_location
