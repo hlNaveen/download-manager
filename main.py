@@ -1,5 +1,5 @@
 import tkinter as tk
-from tkinter import ttk, messagebox, filedialog
+from tkinter import ttk, messagebox
 import threading
 import time
 from datetime import datetime, timedelta
@@ -9,16 +9,20 @@ from plyer import notification
 
 from ai_assistant import AIAssistant
 from utils import get_max_speed, prompt_save_location
+from styles import apply_cloud_style
 
 class DownloadManager(tk.Tk):
     def __init__(self):
         super().__init__()
 
-        self.style = Style(theme="superhero")  # Choose a more modern, cloudy theme
-        self.title("Download Manager")
+        self.style = Style(theme="superhero")  # Use a modern, cloud-inspired theme
+        self.title("Cloud Download Manager")
         self.geometry("800x600")
+        apply_cloud_style(self)
 
         self.create_widgets()
+        self.configure_grid()
+        
         self.download_queue = []
         self.downloading = False
         self.download_thread = None
@@ -105,6 +109,12 @@ class DownloadManager(tk.Tk):
         self.chat_history = tk.Text(self, width=80, height=10, wrap=tk.WORD)
         self.chat_history.grid(row=12, column=0, columnspan=6, padx=10, pady=10, sticky=tk.W+tk.E+tk.N+tk.S)
 
+    def configure_grid(self):
+        for i in range(13):
+            self.grid_rowconfigure(i, weight=1)
+        for i in range(6):
+            self.grid_columnconfigure(i, weight=1)
+
     def send_chat(self):
         user_input = self.chat_entry.get()
         self.chat_entry.delete(0, tk.END)
@@ -113,236 +123,149 @@ class DownloadManager(tk.Tk):
         self.chat_history.insert(tk.END, f"Assistant: {response}\n")
         self.chat_history.see(tk.END)
 
-        for i in range(6):
-            self.grid_columnconfigure(i, weight=1)
-
-        self.grid_rowconfigure(4, weight=1)
-        self.grid_rowconfigure(9, weight=1)
-
     def add_to_queue(self):
-        urls = self.url_entry.get()
-        if not urls:
-            messagebox.showerror("Error", "Please enter valid URLs.")
-            return
-
-        for url in urls.split(','):
+        urls = self.url_entry.get().split(',')
+        for url in urls:
             self.queue_listbox.insert(tk.END, url.strip())
         self.url_entry.delete(0, tk.END)
 
     def start_download(self):
         if self.downloading:
-            messagebox.showinfo("Info", "Download already in progress.")
+            messagebox.showinfo("Info", "Download in progress. Please wait.")
             return
 
-        if self.queue_listbox.size() == 0:
-            messagebox.showinfo("Info", "Queue is empty.")
-            return
-
-        self.downloading = True
-        self.progress_bar['value'] = 0
-        self.progress_label.config(text="Progress: 0%")
-        self.status_label.config(text="Starting download...")
-
-        self.download_thread = threading.Thread(target=self.download_queue_files)
-        self.download_thread.start()
-
-    def download_queue_files(self):
-        while self.queue_listbox.size() > 0 and self.downloading:
-            url = self.queue_listbox.get(0)
-            file_path = prompt_save_location(url)
-            if not file_path:
-                self.queue_listbox.delete(0)
-                continue
-
-            self.download_file(url, file_path)
-
-            if not self.downloading:
-                break
-
-        self.status_label.config(text="All downloads complete.")
-        self.downloading = False
-
-    def download_file(self, url, file_path):
-        start_time = time.time()
-        bytes_downloaded = 0
-        total_size = 0
-        self.bytes_downloaded = 0
-        max_speed = get_max_speed(self.bandwidth_entry)
-
-        for _ in range(self.retry_count):
-            try:
-                with requests.get(url, stream=True) as response:
-                    response.raise_for_status()
-                    total_size = int(response.headers.get('content-length', 0))
-
-                    chunk_size = 1024
-                    with open(file_path, 'wb') as file:
-                        for chunk in response.iter_content(chunk_size=chunk_size):
-                            if not self.downloading:
-                                self.status_label.config(text="Download paused.")
-                                self.current_download = {
-                                    'url': url,
-                                    'file_path': file_path,
-                                    'bytes_downloaded': bytes_downloaded,
-                                    'total_size': total_size,
-                                    'start_time': start_time
-                                }
-                                return
-
-                            if chunk:
-                                file.write(chunk)
-                                bytes_downloaded += len(chunk)
-                                self.bytes_downloaded = bytes_downloaded
-                                progress = (bytes_downloaded / total_size) * 100
-                                elapsed_time = time.time() - start_time
-                                download_speed = bytes_downloaded / elapsed_time / 1024
-                                remaining_time = (total_size - bytes_downloaded) / (download_speed * 1024)
-                                self.progress_bar['value'] = progress
-                                self.progress_label.config(text=f"Progress: {int(progress)}%")
-                                self.details_label.config(text=f"Downloaded: {bytes_downloaded // 1024} KB, Speed: {download_speed:.2f} KB/s, Remaining time: {remaining_time:.2f} s")
-                                self.update_idletasks()
-
-                                if max_speed and download_speed > max_speed:
-                                    time.sleep((len(chunk) / 1024) / max_speed)
-
-                    self.queue_listbox.delete(0)
-                    self.history_listbox.insert(tk.END, f"{datetime.now().strftime('%Y-%m-%d %H:%M:%S')} - {file_path} downloaded successfully.\n")
-                    self.status_label.config(text=f"Download {file_path} complete.")
-                    notification.notify(
-                        title="Download Complete",
-                        message=f"{file_path} has been downloaded successfully.",
-                        timeout=5
-                    )
-                    self.current_download = None
-                    break
-
-            except requests.exceptions.RequestException as err:
-                self.history_listbox.insert(tk.END, f"{datetime.now().strftime('%Y-%m-%d %H:%M:%S')} - {file_path} download failed: {err}\n")
-                self.status_label.config(text=f"Download {file_path} failed: {err}")
-
-    def pause_download(self):
-        if not self.downloading:
-            messagebox.showinfo("Info", "No download in progress.")
-            return
-
-        self.downloading = False
-        self.paused = True
-        self.status_label.config(text="Download paused.")
-        self.progress_label.config(text=f"Progress: {int(self.progress)}%")
-        self.details_label.config(text="")
-
-    def resume_download(self):
-        if not self.paused:
-            messagebox.showinfo("Info", "No download to resume.")
+        if not self.queue_listbox.size():
+            messagebox.showinfo("Info", "Queue is empty. Add URLs to queue first.")
             return
 
         self.downloading = True
         self.paused = False
-        self.progress_label.config(text=f"Progress: {int(self.progress)}%")
-        self.status_label.config(text="Resuming download...")
-        self.download_thread = threading.Thread(target=self.resume_file_download)
+        self.download_thread = threading.Thread(target=self.download_files)
         self.download_thread.start()
 
-    def resume_file_download(self):
-        if self.current_download:
-            url = self.current_download['url']
-            file_path = self.current_download['file_path']
-            bytes_downloaded = self.current_download['bytes_downloaded']
-            total_size = self.current_download['total_size']
-            start_time = self.current_download['start_time']
-            max_speed = get_max_speed(self.bandwidth_entry)
+    def download_files(self):
+        while self.queue_listbox.size() > 0 and self.downloading:
+            url = self.queue_listbox.get(0)
+            save_location = prompt_save_location(url)
+            if not save_location:
+                self.queue_listbox.delete(0)
+                continue
 
             try:
-                with requests.get(url, stream=True, headers={'Range': f'bytes={bytes_downloaded}-'}) as response:
-                    response.raise_for_status()
-                    chunk_size = 1024
-                    with open(file_path, 'ab') as file:
-                        for chunk in response.iter_content(chunk_size=chunk_size):
-                            if not self.downloading:
-                                self.status_label.config(text="Download paused.")
-                                self.current_download = {
-                                    'url': url,
-                                    'file_path': file_path,
-                                    'bytes_downloaded': bytes_downloaded,
-                                    'total_size': total_size,
-                                    'start_time': start_time
-                                }
-                                return
+                self.status_label.config(text=f"Downloading {save_location}...")
+                self.progress_bar['value'] = 0
+                self.progress_label.config(text="Progress: 0%")
+                self.details_label.config(text="")
+                response = requests.get(url, stream=True)
+                total_size = int(response.headers.get('content-length', 0))
+                chunk_size = 1024
+                start_time = time.time()
+                max_speed = get_max_speed(self.bandwidth_entry)
 
-                            if chunk:
-                                file.write(chunk)
-                                bytes_downloaded += len(chunk)
-                                self.bytes_downloaded = bytes_downloaded
-                                progress = (bytes_downloaded / total_size) * 100
-                                elapsed_time = time.time() - start_time
-                                download_speed = bytes_downloaded / elapsed_time / 1024
-                                remaining_time = (total_size - bytes_downloaded) / (download_speed * 1024)
-                                self.progress_bar['value'] = progress
-                                self.progress_label.config(text=f"Progress: {int(progress)}%")
-                                self.details_label.config(text=f"Downloaded: {bytes_downloaded // 1024} KB, Speed: {download_speed:.2f} KB/s, Remaining time: {remaining_time:.2f} s")
-                                self.update_idletasks()
+                with open(save_location, 'wb') as file:
+                    for chunk in response.iter_content(chunk_size=chunk_size):
+                        if not self.downloading:
+                            self.status_label.config(text="Download paused.")
+                            self.current_download = {
+                                'url': url,
+                                'file_path': save_location,
+                                'bytes_downloaded': file.tell(),
+                                'total_size': total_size,
+                                'start_time': start_time
+                            }
+                            return
 
-                                if max_speed and download_speed > max_speed:
-                                    time.sleep((len(chunk) / 1024) / max_speed)
+                        if chunk:
+                            file.write(chunk)
+                            self.bytes_downloaded += len(chunk)
+                            progress = (self.bytes_downloaded / total_size) * 100
+                            elapsed_time = time.time() - start_time
+                            download_speed = self.bytes_downloaded / elapsed_time / 1024
+                            remaining_time = (total_size - self.bytes_downloaded) / (download_speed * 1024)
+                            self.progress_bar['value'] = progress
+                            self.progress_label.config(text=f"Progress: {progress:.2f}%")
+                            self.details_label.config(text=f"Downloaded: {self.bytes_downloaded / (1024 * 1024):.2f} MB | "
+                                                           f"Speed: {download_speed:.2f} KB/s | "
+                                                           f"ETA: {timedelta(seconds=int(remaining_time))}")
 
-                    self.queue_listbox.delete(0)
-                    self.history_listbox.insert(tk.END, f"{datetime.now().strftime('%Y-%m-%d %H:%M:%S')} - {file_path} downloaded successfully.\n")
-                    self.status_label.config(text=f"Download {file_path} complete.")
-                    notification.notify(
-                        title="Download Complete",
-                        message=f"{file_path} has been downloaded successfully.",
-                        timeout=5
-                    )
-                    self.current_download = None
+                            if max_speed and download_speed > max_speed:
+                                time.sleep(1)
 
-            except requests.exceptions.RequestException as err:
-                self.history_listbox.insert(tk.END, f"{datetime.now().strftime('%Y-%m-%d %H:%M:%S')} - {file_path} download failed: {err}\n")
-                self.status_label.config(text=f"Download {file_path} failed: {err}")
+                self.queue_listbox.delete(0)
+                self.history_listbox.insert(tk.END, f"Downloaded {save_location}\n")
+                self.status_label.config(text=f"Completed downloading {save_location}.")
+                self.show_notification("Download Complete", f"{save_location} downloaded successfully.")
+            except Exception as e:
+                self.status_label.config(text=f"Error downloading {save_location}. Retrying...")
+                self.retry_count -= 1
+                if self.retry_count > 0:
+                    self.queue_listbox.insert(tk.END, url)
+                else:
+                    self.history_listbox.insert(tk.END, f"Failed to download {save_location}. Error: {str(e)}\n")
+                    self.status_label.config(text=f"Failed to download {save_location}. Error: {str(e)}")
+                    self.retry_count = 3
 
-    def stop_download(self):
         self.downloading = False
-        self.current_download = None
-        self.status_label.config(text="Download stopped.")
         self.progress_bar['value'] = 0
         self.progress_label.config(text="Progress: 0%")
         self.details_label.config(text="")
 
+    def pause_download(self):
+        self.downloading = False
+        self.paused = True
+
+    def resume_download(self):
+        if self.paused:
+            self.downloading = True
+            self.paused = False
+            self.status_label.config(text=f"Resuming download: {self.current_download['file_path']}")
+            self.download_thread = threading.Thread(target=self.download_files)
+            self.download_thread.start()
+
+    def stop_download(self):
+        self.downloading = False
+        self.paused = False
+        self.status_label.config(text="Download stopped.")
+        self.current_download = None
+
     def clear_queue(self):
         self.queue_listbox.delete(0, tk.END)
-
-    def on_closing(self):
-        if self.downloading:
-            self.downloading = False
-            if self.download_thread and self.download_thread.is_alive():
-                self.download_thread.join()
-
-        self.destroy()
+        self.status_label.config(text="Queue cleared.")
 
     def schedule_download(self):
-        schedule_time = tk.simpledialog.askstring("Schedule Download", "Enter time (HH:MM):")
-        if not schedule_time:
-            return
-
-        try:
-            schedule_time = datetime.strptime(schedule_time, '%H:%M').time()
-            now = datetime.now()
-            schedule_datetime = datetime.combine(now.date(), schedule_time)
-
-            if schedule_datetime < now:
-                schedule_datetime += timedelta(days=1)
-
-            delay = (schedule_datetime - now).total_seconds()
-            threading.Timer(delay, self.start_download).start()
-            messagebox.showinfo("Info", f"Download scheduled for {schedule_time.strftime('%H:%M')}")
-        except ValueError:
-            messagebox.showerror("Error", "Invalid time format. Please use HH:MM.")
+        schedule_time_str = tk.simpledialog.askstring("Schedule Download", "Enter start time (HH:MM):")
+        if schedule_time_str:
+            try:
+                schedule_time = datetime.strptime(schedule_time_str, "%H:%M").time()
+                now = datetime.now()
+                first_run = datetime.combine(now, schedule_time)
+                if first_run < now:
+                    first_run += timedelta(days=1)
+                delay = (first_run - now).total_seconds()
+                self.status_label.config(text=f"Scheduled download at {schedule_time_str}.")
+                self.after(int(delay * 1000), self.start_download)
+            except ValueError:
+                messagebox.showerror("Error", "Invalid time format. Use HH:MM.")
 
     def toggle_dark_mode(self):
         current_theme = self.style.theme_use()
-        if current_theme == "cyborg":
-            self.style.theme_use("cosmo")
+        new_theme = "darkly" if current_theme == "superhero" else "superhero"
+        self.style.theme_use(new_theme)
+
+    def show_notification(self, title, message):
+        notification.notify(
+            title=title,
+            message=message,
+            timeout=5
+        )
+
+    def on_closing(self):
+        if self.downloading:
+            if messagebox.askokcancel("Quit", "There is a download in progress. Do you want to quit?"):
+                self.downloading = False
+                self.destroy()
         else:
-            self.style.theme_use("cyborg")
+            self.destroy()
 
 if __name__ == "__main__":
     app = DownloadManager()
