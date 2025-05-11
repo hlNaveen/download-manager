@@ -141,6 +141,3 @@ This project is licensed under the MIT License - see the [LICENSE](LICENSE) file
 - [Requests](https://docs.python-requests.org/) for the HTTP library
 - [Humanize](https://github.com/jmoiron/humanize) for human-readable metrics
 
----
-
-Made with ❤️ by [Your Name]
