@@ -1,74 +1,99 @@
-# Download Manager
+# HyDown Download Manager
 
-Download Manager is a robust and user-friendly tool designed to simplify file downloads. It offers high-speed downloads, resume capabilities, and an organized approach to managing your downloaded files.
+HyDown is a modern, user-friendly desktop application for managing your file downloads. Built with Python and CustomTkinter, it offers a clean interface inspired by Apple's design principles, making it intuitive to use.
 
 ## Features
 
-- **High-Speed Downloads**: Efficient downloading mechanism for faster transfers.
-- **Pause and Resume**: Interrupt downloads and continue them seamlessly.
-- **Multiple File Support**: Download multiple files simultaneously.
-- **Custom Save Locations**: Choose specific directories for saving files.
-- **Error Handling**: Automatic retries and notifications for failed downloads.
-- **User-Friendly Interface**: Intuitive design for easy navigation and usage.
+* **Modern UI:** Clean and aesthetically pleasing interface using CustomTkinter.
+* **Queue Management:** Add multiple downloads to a queue.
+* **Concurrent Downloads:** Download multiple files simultaneously (configurable).
+* **Progress Tracking:** Real-time display of download progress, speed, and ETA for each item.
+* **Download Controls:** Pause, resume, cancel, and retry downloads.
+* **Filtering & Searching:**
+    * Filter downloads by status (All, Downloading, Paused, Queued, Completed, Failed).
+    * Search downloads by name or URL.
+* **File Management:**
+    * Automatically saves files to a specified download directory.
+    * Handles duplicate filenames by appending numbers (e.g., `file(1).zip`).
+    * Option to open the containing folder for completed downloads.
+* **Settings Panel:**
+    * Customize the download directory.
+    * Set the maximum number of concurrent downloads.
+    * Choose between Light, Dark, and System appearance modes.
+* **Persistent Configuration:** Settings are saved locally in a `hydown_config.json` file.
+* **Cross-Platform (Source):** Runs on Windows, macOS, and Linux where Python and its dependencies are supported.
 
-## Installation
+## Requirements
 
-### Prerequisites
-Make sure you have the following installed:
-- Python 3.8 or later
-- Pip (Python package installer)
+To run HyDown Download Manager from source, you'll need:
 
-### Steps
-1. Clone the repository:
-   ```bash
-   git clone https://github.com/hlNaveen/download-manager.git
-Navigate to the project directory:
-bash
-Copy code
-cd download-manager
+* Python 3.7+
+* The following Python libraries:
+    * `customtkinter`
+    * `requests`
+    * `humanize`
+    * `Pillow` (often a dependency of `customtkinter` for image handling, good to have)
+
+You can install these using pip:
+```bash
+pip install customtkinter requests humanize Pillow
+
+
+**File Structure**
+The project is organized into the following Python files:
+
+hydown_main.py: The main application script. This is the file you run.
+hydown_item.py: Defines the DownloadItem class, representing a single download.
+hydown_dialogs.py: Contains the AddDownloadDialog and SettingsDialog classes for UI pop-ups.
+hydown_config.py: Manages loading and saving application settings and default configurations.
+hydown_config.json (auto-generated): Stores user settings.
+HyDown_Downloads/ (auto-generated): Default directory where downloaded files are saved.
+How to Run from Source
+Clone the repository (or download the files):
+
+
+# If you have it on GitHub
+# git clone [https://github.com/your_username/HyDownManager.git](https://github.com/your_username/HyDownManager.git)
+# cd HyDownManager
+Ensure all .py files (hydown_main.py, hydown_item.py, hydown_dialogs.py, hydown_config.py) are in the same directory.
+
 Install dependencies:
-bash
-Copy code
-pip install -r requirements.txt
+
+
+pip install customtkinter requests humanize Pillow
 Run the application:
-bash
-Copy code
-python main.py
-Usage
-Launch the Application: Use python main.py to start the Download Manager.
-Add URLs: Enter the URLs of the files you wish to download.
-Customize Settings: Specify download locations and preferences.
-Start Downloads: Initiate and monitor download progress in real-time.
-Manage Downloads: Pause, resume, or cancel downloads as needed.
-Contributing
-Contributions are always welcome! Here's how you can help:
 
-Fork the repository.
-Create a feature branch:
-bash
-Copy code
-git checkout -b feature-name
-Commit your changes:
-bash
-Copy code
-git commit -m "Description of changes"
-Push to your fork:
-bash
-Copy code
-git push origin feature-name
-Submit a pull request to the main repository.
-Issues
-If you encounter any issues or have feature requests, please submit them here.
 
-Roadmap
- Add support for proxy settings.
- Integrate a graphical user interface (GUI).
- Implement support for FTP and other protocols.
- Enhance download speed optimization techniques.
-License
-This project is licensed under the MIT License. See the LICENSE file for details.
+python hydown_main.py
+Building an Executable (.exe)
+You can create a standalone executable using PyInstaller.
 
-Contact
-For queries or support, reach out to:
+Install PyInstaller:
 
-GitHub: hlNaveen
+
+pip install pyinstaller
+Navigate to the project directory in your terminal.
+
+Run PyInstaller (example command):
+
+
+pyinstaller --name HyDownManager --windowed --onefile --icon=path/to/your/icon.ico hydown_main.py
+--windowed: For GUI applications (no console window).
+--onefile: To bundle everything into a single executable (optional, creates a larger file but is simpler to distribute).
+--icon=path/to/your/icon.ico: To set a custom icon for the executable.
+You might need to use the --add-data option if PyInstaller doesn't automatically pick up all necessary customtkinter assets, though it often does.
+The executable will be found in the dist folder created by PyInstaller.
+
+Settings and Configuration
+Application settings (download directory, max concurrent downloads, appearance mode) are stored in hydown_config.json in the application's root directory.
+You can change these settings via the "Settings" button within the application.
+The default download location is a folder named HyDown_Downloads created in the same directory as the application.
+Future Enhancements (Ideas)
+True resumable downloads (handling HTTP Range requests).
+Bandwidth limiting options.
+Download scheduling.
+More detailed error reporting and logging.
+Drag and drop support for adding URLs.
+System tray integration.
+Customizable themes beyond light/dark/system.
+.
